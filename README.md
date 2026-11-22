@@ -1,3 +1,47 @@
+# Quantitative Strategy Research & Paper-Trading Sandbox
+
+**A Python research application for evaluating rule-based and ML-assisted daily equity strategies with explicit risk controls.**
+
+**Stack:** Python, Pandas/NumPy ecosystem, scikit-learn gradient boosting, Alpaca paper-trading interface, Tkinter, SQLite.  
+**Status:** Development / paper-only. **No demonstrated live-trading profitability.** Default operation uses synthetic data and dry-run execution.
+
+## Portfolio overview
+
+This project studies whether market indicators and model-based strategy selection can improve a portfolio after realistic trading frictions. It deliberately separates **research/backtesting**, **dry-run proposals**, and **explicitly armed paper execution**.
+
+### Research and engineering features
+
+- Momentum, mean reversion, trend following, breakout, pairs-inspired, and volatility-adaptive candidate signals.
+- Gradient-boosting strategy scoring with chronological development folds and a final held-out quarter.
+- Next-open simulation, transaction costs, position/cash tracking, and benchmark comparison.
+- Risk checks, operator-armed paper orders, and SQLite order journaling to reduce accidental duplicate submissions.
+- Synthetic-data dashboard for reproducible demonstration without an API key.
+
+### Run without brokerage credentials
+
+```bash
+python -m venv .venv
+# Activate the virtual environment for your OS
+pip install -r requirements.txt
+python bot.py dashboard --synthetic --mode offline
+python bot.py backtest --synthetic
+python -m unittest discover -s tests -v
+```
+
+### Research integrity and limits
+
+The synthetic data checks application behavior; it **does not establish an investable edge**. A meaningful strategy assessment still requires a point-in-time universe, independent out-of-sample testing, realistic liquidity and delisting assumptions, and sensitivity analysis. The pairs-inspired strategy is **long-only**, not a market-neutral pairs trade.
+
+Paper execution is disabled by default and requires configuration plus a separate explicit arming action. Nothing here is intended as investment advice.
+
+### Architecture guide
+
+See [ARCHITECTURE.md](ARCHITECTURE.md) for model targets, research assumptions, execution safeguards, and limitations.
+
+---
+
+## Detailed setup and usage
+
 # Quantitative Equities Research & Paper-Trading Workbench
 
 **Python · Time-series features · Gradient boosting · Walk-forward validation · Backtesting · Alpaca paper API**
