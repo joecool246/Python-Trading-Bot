@@ -1,56 +1,103 @@
-# Trading Bot V2 (in progress/dev)
+# Quantitative Equities Research & Paper-Trading Workbench
 
-A daily, long-only equities research and Alpaca paper-trading application. The default dashboard uses deterministic synthetic data and dry-run execution. Orders require both configuration and operator arming. The OpenAI assistant summarizes displayed research and has no execution tools.
+**Python · Time-series features · Gradient boosting · Walk-forward validation · Backtesting · Alpaca paper API**
 
-## Setup
+A research-first, daily-frequency **long-only equity strategy** workbench. It combines signal construction, machine-learning-assisted strategy selection, portfolio simulation, risk controls, and an optional desktop dashboard.
 
-Run these commands in the repository. Python 3.12 was used for verification. Tkinter comes with a standard Windows Python installation.
+> **Status: in development.** The default demo uses deterministic synthetic data and offline/dry-run execution. No historical performance, live profitability, or successful real-money deployment is claimed. Broker connectivity is **paper trading only** and requires explicit operator arming.
+
+## Research questions
+
+- Can historical price, volume, trend, volatility, and relative-strength features inform short-horizon strategy selection?
+- How do learned strategy scores compare against simpler rule-based selection and an equal-weight baseline?
+- What remains after chronological out-of-sample evaluation and modeled transaction friction?
+
+## System components
+
+| Component | Responsibility |
+| --- | --- |
+| Data | Validate daily OHLCV bars and compute backward-looking indicators |
+| Strategies | Momentum, mean reversion, trend following, breakout, benchmark-relative pairs, volatility-adaptive signals |
+| ML research | Gradient-boosted strategy return estimates and a supplementary classifier of a rule-defined regime |
+| Selector | Rank available candidate strategies, normalize weights, permit abstention |
+| Risk | Independent limits and checks before order proposals |
+| Backtest & analytics | Next-open simulation, slippage/fees, positions/cash, benchmark and performance statistics |
+| Execution | Alpaca **paper** adapter and SQLite intent journal |
+| Interface | Tkinter dashboard and CLI; optional assistant summarizes research without execution privileges |
+
+The *pairs* signal is **long-only**: it does not implement a hedged long/short statistical arbitrage portfolio. The regime classifier learns rule labels, so its agreement score is **not** independent evidence of market regime prediction.
+
+## Quick start — offline demo
+
+Python 3.12 was used for verification; Tkinter is supplied with standard Windows Python installations.
 
 ```powershell
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
 python -m pip install -r requirements.txt
 Copy-Item config.example.json config.local.json
-```
-
-Use PowerShell environment variables for credentials. The example env file lists their names. The application reads the process environment directly. Alpaca credentials are used for paper account reads and historical downloads. OpenAI credentials are optional.
-
-```powershell
-$env:ALPACA_API_KEY = "<paper-key>"
-$env:ALPACA_API_SECRET = "<paper-secret>"
-$env:OPENAI_API_KEY = "<optional-key>"
-```
-
-## Run
-
-```powershell
-python bot.py
 python bot.py dashboard --synthetic --mode offline
+```
+
+Other safe local commands:
+
+```powershell
 python bot.py run --synthetic --mode dry-run
 python bot.py backtest --synthetic
 python -m unittest discover -s tests -v
 ```
 
-Supply historical data as CSV with `symbol,date,open,high,low,close,volume` and an entry for the configured benchmark. Use one row per symbol per daily session, UTC-compatible dates and a consistent adjustment methodology. Use a point-in-time universe for meaningful evaluation. A missing current symbol bar skips decisions and fills. Historical positions can retain their last price across gaps, so data containing delistings requires external cleanup and a documented terminal-value convention.
+Synthetic runs test application behavior and **do not establish a trading edge**.
+
+## Research with historical data
+
+Provide a consistent-adjustment CSV with columns:
+
+```text
+symbol,date,open,high,low,close,volume
+```
+
+Include the configured benchmark and a point-in-time universe when evaluating historical claims.
+
+```powershell
+python bot.py train --config config.local.json --data bars.csv
+python bot.py backtest --config config.local.json --data bars.csv
+```
+
+For broker-assisted historical download, configure your symbol universe and **paper** credentials locally, then use:
 
 ```powershell
 python bot.py download --config config.local.json --output bars.csv
-python bot.py train --config config.local.json --data bars.csv
-python bot.py backtest --config config.local.json --data bars.csv
-python bot.py dashboard --config config.local.json --data bars.csv --mode dry-run
 ```
 
-Set `symbols` in the local JSON configuration before downloading a multi-stock universe. Downloads use adjusted daily IEX bars. Research fitting is in memory and repeats when a CLI run begins. The final quarter is held out, and walk-forward cross-validation uses the first three quarters.
+The final quarter of data is held out; earlier data is used for chronological walk-forward development. Training/validation label boundaries are respected by the research pipeline. Results depend on data quality and assumptions.
 
-## Paper orders
+## Optional paper trading — read before use
 
-Use a dedicated Alpaca paper account. Update `allow_paper_orders` to `true` in the local configuration only after independent review. Refresh the historical CSV before starting a session. Launch the dashboard and choose **Run one paper cycle** to arm that cycle, or use an explicitly armed CLI run.
+The app defaults to non-executing operation. Paper orders require configuration permission **and explicit per-cycle arming**:
 
 ```powershell
-python bot.py dashboard --config config.local.json --data bars.csv --mode paper
 python bot.py run --config config.local.json --data bars.csv --mode paper --arm-paper
 ```
 
-Paper execution requires an open market, an exact previous-session signal date, an eligible equity, a fresh quote and an independent risk approval. It persists each order intent before submission, so restart or timeout cannot silently resubmit it. An unresolved intent pauses paper execution until reconciliation succeeds. Keep the same journal for a given account and use one dedicated bot account. A limit price bounds cash use on buys. Orders may stay open or fill partially. Cancellation is available in the broker adapter and is not automated. Review open orders in Alpaca before handling a stopped session. Dry-run proposals are logged separately and use a fixed illustrative cash balance, without maintaining an evolving simulated portfolio.
+Use a dedicated Alpaca **paper** account. Review configuration, recent data, open orders, and risk limits independently before arming. Paper order intents are journaled to reduce duplicate submissions following timeout/restart. Unresolved intents block execution until reconciled. Partial fills and cancellations require operator attention; cancellation is not automated.
 
-See [architecture and strategy notes](ARCHITECTURE.md) for model design, simulation assumptions and evaluation limits.
+Credentials belong in environment variables, never committed to Git:
+
+```text
+ALPACA_API_KEY
+ALPACA_API_SECRET
+OPENAI_API_KEY  # optional
+```
+
+## Evaluation caveats
+
+A convincing quant-research result requires **real adjusted historical data**, point-in-time universe construction, delisting treatment, transaction-cost sensitivity, and genuinely untouched out-of-sample evaluation. The historical simulator does not model capacity, queue priority, partial fills, or delistings. End-of-backtest positions are marked, not forced closed.
+
+Read [ARCHITECTURE.md](ARCHITECTURE.md) for strategy definitions, ML target construction, execution mechanics, and additional limitations.
+
+## Portfolio demo checklist
+
+For an external portfolio, add a reproducible **real-data research report** with exact date ranges, universe selection, benchmark, fees/slippage assumptions, train/test split, Sharpe and drawdown, failure cases, and limitations. Until then, describe this as an **engineering and research prototype**, not an alpha discovery.
+
+**Not investment advice. Not for live trading.**
