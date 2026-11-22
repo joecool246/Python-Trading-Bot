@@ -31,7 +31,7 @@ flowchart LR
     G --> J[Dry-run or explicitly armed paper adapter]
 ```
 
-Signals cover momentum, mean reversion, trend following, breakout, long-only pairs, and volatility-adaptive exposure. The baseline gradient booster estimates short-horizon net utility. The research ensemble adds a within-symbol relative-utility estimate where signals overlap. Both can abstain. The ensemble is evaluated offline and kept outside the order path.
+Signals cover momentum, mean reversion, trend following, breakout, benchmark-relative long-only pairs, and volatility-adaptive exposure. The pairs signal carries long equity exposure without a short hedge. The supplementary regime classifier learns rule labels, so agreement measures how well it reproduces those labels. The baseline gradient booster estimates short-horizon net utility. The research ensemble adds a within-symbol relative-utility estimate where signals overlap. Both can abstain. The ensemble is evaluated offline and kept outside the order path.
 
 ### The V2 feature defect
 
