@@ -88,3 +88,7 @@ A real study requires immutable event archives with their true timestamps and a 
 ## Release candidate
 
 See [the changelog](CHANGELOG.md) and [release verification](RELEASE_READINESS.md). The optional chart environment uses Matplotlib 3.10.6. The default offline workflows and CI require no market or LLM credentials.
+
+## Research branch
+
+The portfolio release is frozen at the local **v4.0.0-rc.1** tag. This branch adds [individual strategy analysis](STRATEGY_ANALYSIS.md), [allocation comparisons](ALLOCATION_RESEARCH.md), and a [sector-universe robustness study](UNIVERSE_ROBUSTNESS.md). Model settings and order execution are preserved. The [prospective evaluation](PROSPECTIVE_EVALUATION.md) is manual and non-executing. See the [future LLM evaluation plan](LLM_EVALUATION_PLAN.md) for a low-cost prospective data protocol.

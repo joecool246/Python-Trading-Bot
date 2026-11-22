@@ -136,7 +136,12 @@ class Research:
                                     pnl=None, allocation={"hold": 1.})])
         return curve, fills
 
-    def run(self, method: str) -> tuple[pd.DataFrame, pd.DataFrame]:
+    def run(self, method: str, *, trace: bool = False, rebalance_every: int = 1,
+            max_daily_turnover: float | None = None) -> tuple[pd.DataFrame, pd.DataFrame]:
+        if type(rebalance_every) is not int or rebalance_every < 1:
+            raise ValueError("Rebalance interval must be a positive session count")
+        if max_daily_turnover is not None and not 0 < max_daily_turnover <= 1:
+            raise ValueError("Turnover cap must be a positive fraction at most one")
         if method == "hold":
             return self.hold_benchmark()
         if method == "ml" and self.fit_mode != "evaluation":
@@ -145,6 +150,7 @@ class Research:
         cash = peak = self.initial
         held, mark, basis, tags, gaps, entry_session = {}, {}, {}, {}, {}, {}
         prior_regime = self.market.shift()
+        prior_allocations = {}
         queued, equity_rows, fills = {}, [], []
         for session_number, date in enumerate(self.dates[self.cutoff - 1:]):
             if date == self.dates[self.cutoff - 1]:
@@ -158,6 +164,9 @@ class Research:
                 continue
             day_start = equity_rows[-1]["equity"] if equity_rows else cash
             trade_count = 0
+            prior_marks = mark.copy() if trace else {}
+            prior_holdings = held.copy() if trace else {}
+            flow = {}
             for symbol in self.universe:
                 if date in self.bars[symbol].index:
                     mark[symbol] = self.bars[symbol].at[date, "open"]
@@ -167,6 +176,8 @@ class Research:
                     if gaps[symbol] > self.max_mark_gap:
                         raise ValueError(f"Stale held position {symbol} on {date.date()}; supply verified terminal data")
             opening_equity = cash + sum(mark[s] * n for s, n in held.items())
+            turnover_budget = (opening_equity * max_daily_turnover
+                               if max_daily_turnover is not None else None)
             targets = {s: int(weight * opening_equity / mark[s])
                        for s, (weight, _, _, _) in queued.items() if s in mark}
             for symbol in sorted(targets, key=lambda s: (targets[s] >= held.get(s, 0), s)):
@@ -178,6 +189,8 @@ class Research:
                 equity = cash + exposure
                 price = mark[symbol]
                 capacity = int(previous_volume * self.max_participation)
+                if turnover_budget is not None:
+                    capacity = min(capacity, max(0, int(turnover_budget / (price * (1 + self.slippage)))))
                 requested = int(np.clip(targets[symbol] - qty, -capacity, capacity))
                 execution = price * (1 + np.sign(requested) * self.slippage)
                 unit_cash = execution * (1 + self.fee)
@@ -206,18 +219,29 @@ class Research:
                                   allocation=tags.get(symbol, {}),
                                   holding_sessions=session_number - entry_session[symbol] if delta < 0 else None))
                 held[symbol] = qty + delta
+                if turnover_budget is not None:
+                    turnover_budget -= abs(delta) * execution
+                if trace:
+                    flow[symbol] = (delta, execution, fee)
                 cash -= delta * execution + fee
                 trade_count += 1
             queued = {}
+            switches = 0
             for symbol in self.universe:
                 if date not in self.bars[symbol].index:
                     continue
                 mark[symbol] = self.bars[symbol].at[date, "close"]
+                if session_number % rebalance_every:
+                    continue
                 previous = tuple(name for name, weight in tags.get(symbol, {}).items() if weight > 0)
                 if not held.get(symbol, 0):
                     previous = ()
                 allocations, _ = self.decision(symbol, date, method, previous,
                                                 scores=predictions.get((symbol, date)))
+                if trace:
+                    active = frozenset(allocations)
+                    switches += active != prior_allocations.get(symbol, frozenset())
+                    prior_allocations[symbol] = active
                 atr = self.frames[symbol].at[date, "atr"]
                 weight = sum(allocations.values()) * min(self.limits.position, self.limits.exposure / len(self.universe))
                 queued[symbol] = weight, atr, allocations, self.bars[symbol].at[date, "volume"]
@@ -228,6 +252,16 @@ class Research:
             for symbol, shares in held.items():
                 for name, fraction in tags.get(symbol, {}).items():
                     allocation[name] = allocation.get(name, 0.) + shares * mark[symbol] * fraction / equity
-            equity_rows.append(dict(date=date, equity=equity, cash=cash, exposure=exposure,
-                                    regime=prior_regime.loc[date], allocation=allocation))
+            row = dict(date=date, equity=equity, cash=cash, exposure=exposure,
+                       regime=prior_regime.loc[date], allocation=allocation)
+            if trace:
+                row["positions"] = {s: shares * mark[s] / equity for s, shares in held.items() if shares}
+                row["strategy_set_changes"] = switches
+                contribution = {s: shares * (mark[s] - prior_marks[s])
+                                for s, shares in prior_holdings.items() if shares}
+                for symbol, (delta, execution, fee) in flow.items():
+                    contribution[symbol] = (contribution.get(symbol, 0.)
+                                             + delta * (mark[symbol] - execution) - fee)
+                row["security_pnl"] = contribution
+            equity_rows.append(row)
         return pd.DataFrame(equity_rows).set_index("date"), pd.DataFrame(fills)

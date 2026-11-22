@@ -21,3 +21,13 @@ I built a Python platform to test whether adaptive strategy selection beats simp
 - **Software engineering:** Built a modular Python trading research platform with a Tkinter dashboard, deterministic offline demo, and SQLite-backed reconciliation for opt-in Alpaca paper execution.
 - **ML engineering:** Implemented leakage-aware walk-forward evaluation for a gradient-boosted strategy selector, isolated a feature-overwrite defect, and tested a namespaced relative-utility model against a reproducible baseline.
 - **Quantitative research:** Reproduced six-strategy backtests on Yahoo Finance and authenticated Alpaca IEX data, comparing allocation methods with transaction costs, exposure controls, and paired block-bootstrap intervals. Found no statistically supported material ML advantage.
+
+## Research-branch follow-up
+
+**Why gradient boosting?** Small nonlinear trees capture interactions among slow-changing volatility, momentum and strategy identity. Shallow trees, fixed seeds and chronological validation make the comparator easier to reproduce. Their output is an expected risk-adjusted utility estimate, not a calibrated success probability.
+
+**What did the new allocation work show?** The nine-symbol baseline spent much more time in cash than equal weighting. A five-session rebalance reduced turnover in the development screen, but paired uncertainty was too wide to support promotion. Volatility targeting and capped inverse-volatility sleeves reduce risk rather than creating investment exposure with leverage.
+
+**How would you evaluate it prospectively?** Freeze the exact archive, configuration and reconstructed-tree hash, log three shadow portfolios before their next open, and settle simulated observations independently in an append-only journal. Compare against buy-and-hold and exposure-matched SPY. A risk gate and operator stop remain separate from quantitative scores. Broker-connected validation needs a separately authorized paper experiment and documented reconciliation.
+
+**Quantitative development résumé bullet:** Built a frozen-model, append-only prospective trading evaluation that verifies input and model fingerprints, records independent risk decisions and estimated next-open fills, and benchmarks three non-executing portfolios.

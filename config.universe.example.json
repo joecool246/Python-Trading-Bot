@@ -1,0 +1,7 @@
+{
+  "benchmark": "SPY",
+  "symbols": ["AAPL","MSFT","JPM","XOM","XLV","XLI","XLY","XLP","QQQ","XLU","XLC","XLF","XLE","XLK","XLB","XLRE"],
+  "fee_bps": 1,
+  "slippage_bps": 5,
+  "allow_paper_orders": false
+}
