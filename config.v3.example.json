@@ -1,0 +1,14 @@
+{
+  "benchmark": "SPY",
+  "symbols": ["AAPL", "MSFT", "JPM", "XOM", "XLV", "XLI", "XLY", "XLP", "QQQ"],
+  "test_start": "2026-01-02",
+  "initial_cash": 100000,
+  "fee_bps": 1,
+  "slippage_bps": 5,
+  "max_prior_volume_participation": 0.01,
+  "max_mark_gap": 5,
+  "materiality_hurdle": 0.01,
+  "strategy_count": 2,
+  "min_edge": 0.001,
+  "allow_paper_orders": false
+}

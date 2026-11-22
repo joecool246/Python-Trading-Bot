@@ -1,147 +1,94 @@
-# Quantitative Strategy Research & Paper-Trading Sandbox
+# Trading Bot V4
 
-**A Python research application for evaluating rule-based and ML-assisted daily equity strategies with explicit risk controls.**
+A Python research and paper-trading sandbox for a specific question: **does ML improve selection among six long-only equity strategies after trading costs?** The inspected studies did not establish a material advantage over equal weighting. The repository includes the simulator, model diagnostics, broker safeguards, and the evidence behind that finding.
 
-**Stack:** Python, Pandas/NumPy ecosystem, scikit-learn gradient boosting, Alpaca paper-trading interface, Tkinter, SQLite.  
-**Status:** Development / paper-only. **No demonstrated live-trading profitability.** Default operation uses synthetic data and dry-run execution.
+## Run the offline demo
 
-## Portfolio overview
-
-This project studies whether market indicators and model-based strategy selection can improve a portfolio after realistic trading frictions. It deliberately separates **research/backtesting**, **dry-run proposals**, and **explicitly armed paper execution**.
-
-### Research and engineering features
-
-- Momentum, mean reversion, trend following, breakout, pairs-inspired, and volatility-adaptive candidate signals.
-- Gradient-boosting strategy scoring with chronological development folds and a final held-out quarter.
-- Next-open simulation, transaction costs, position/cash tracking, and benchmark comparison.
-- Risk checks, operator-armed paper orders, and SQLite order journaling to reduce accidental duplicate submissions.
-- Synthetic-data dashboard for reproducible demonstration without an API key.
-
-### Run without brokerage credentials
-
-```bash
-python -m venv .venv
-# Activate the virtual environment for your OS
-pip install -r requirements.txt
-python bot.py dashboard --synthetic --mode offline
-python bot.py backtest --synthetic
-python -m unittest discover -s tests -v
-```
-
-### Research integrity and limits
-
-The synthetic data checks application behavior; it **does not establish an investable edge**. A meaningful strategy assessment still requires a point-in-time universe, independent out-of-sample testing, realistic liquidity and delisting assumptions, and sensitivity analysis. The pairs-inspired strategy is **long-only**, not a market-neutral pairs trade.
-
-Paper execution is disabled by default and requires configuration plus a separate explicit arming action. Nothing here is intended as investment advice.
-
-### Architecture guide
-
-See [ARCHITECTURE.md](ARCHITECTURE.md) for model targets, research assumptions, execution safeguards, and limitations.
-
----
-
-## Detailed setup and usage
-
-# Quantitative Equities Research & Paper-Trading Workbench
-
-**Python · Time-series features · Gradient boosting · Walk-forward validation · Backtesting · Alpaca paper API**
-
-A research-first, daily-frequency **long-only equity strategy** workbench. It combines signal construction, machine-learning-assisted strategy selection, portfolio simulation, risk controls, and an optional desktop dashboard.
-
-> **Status: in development.** The default demo uses deterministic synthetic data and offline/dry-run execution. No historical performance, live profitability, or successful real-money deployment is claimed. Broker connectivity is **paper trading only** and requires explicit operator arming.
-
-## Research questions
-
-- Can historical price, volume, trend, volatility, and relative-strength features inform short-horizon strategy selection?
-- How do learned strategy scores compare against simpler rule-based selection and an equal-weight baseline?
-- What remains after chronological out-of-sample evaluation and modeled transaction friction?
-
-## System components
-
-| Component | Responsibility |
-| --- | --- |
-| Data | Validate daily OHLCV bars and compute backward-looking indicators |
-| Strategies | Momentum, mean reversion, trend following, breakout, benchmark-relative pairs, volatility-adaptive signals |
-| ML research | Gradient-boosted strategy return estimates and a supplementary classifier of a rule-defined regime |
-| Selector | Rank available candidate strategies, normalize weights, permit abstention |
-| Risk | Independent limits and checks before order proposals |
-| Backtest & analytics | Next-open simulation, slippage/fees, positions/cash, benchmark and performance statistics |
-| Execution | Alpaca **paper** adapter and SQLite intent journal |
-| Interface | Tkinter dashboard and CLI; optional assistant summarizes research without execution privileges |
-
-The *pairs* signal is **long-only**: it does not implement a hedged long/short statistical arbitrage portfolio. The regime classifier learns rule labels, so its agreement score is **not** independent evidence of market regime prediction.
-
-## Quick start — offline demo
-
-Python 3.12 was used for verification; Tkinter is supplied with standard Windows Python installations.
+Install Python 3.12.7 with Tkinter. The constraints file records the verified research environment. From the repository root in PowerShell:
 
 ```powershell
 python -m venv .venv
-.\.venv\Scripts\Activate.ps1
-python -m pip install -r requirements.txt
-Copy-Item config.example.json config.local.json
-python bot.py dashboard --synthetic --mode offline
+$py = ".\.venv\Scripts\python.exe"
+& $py -m pip install -r requirements.txt -c constraints-v4.txt
+& $py bot.py dashboard --synthetic --mode offline
+& $py -m unittest discover -s tests -v
 ```
 
-Other safe local commands:
+Click **Backtest** to see the equity curve, strategies allocated by regime, and detailed metrics. Use **Start** to inspect decision explanations on the latest synthetic bar. Synthetic results are labeled in the window and output.
+
+![Trading Bot V3 desktop dashboard showing a completed synthetic backtest](docs/dashboard-synthetic.png)
+
+## Architecture
+
+```mermaid
+flowchart LR
+    D[Daily OHLCV] --> V[Validation and causal features]
+    V --> S[Six strategy signals and regimes]
+    S --> A[Equal, rules, or ML allocation]
+    A --> B[Next-open simulator]
+    B --> R[Benchmarks and paired uncertainty]
+    A --> G[Independent risk gate]
+    G --> J[Dry-run or explicitly armed paper adapter]
+```
+
+Signals cover momentum, mean reversion, trend following, breakout, benchmark-relative long-only pairs, and volatility-adaptive exposure. The pairs signal carries long equity exposure without a short hedge. The supplementary regime classifier learns rule labels, so agreement measures how well it reproduces those labels. The baseline gradient booster estimates short-horizon net utility. The research ensemble adds a within-symbol relative-utility estimate where signals overlap. Both can abstain. The ensemble is evaluated offline and kept outside the order path.
+
+### The V2 feature defect
+
+The V2 feature matrix used `momentum`, `trend`, and `breakout` for both continuous price features and strategy indicators. Assigning the indicators silently replaced the continuous columns. V3 uses `strategy_*` names in the corrected research matrix. The legacy mapping is isolated and retained for exact V2 reproduction, including the existing operating selector. The corrected ensemble preserves the feature separation in its relative component, and the regression tests cover both mappings.
+
+## Historical evaluation
+
+Decisions use completed daily bars. Training labels begin at the next open, account for both cost legs, and are purged at the training boundary. Portfolio simulation uses next-open fills, position and cash checks, prior-volume limits, and explicit fees and slippage. The study compares annualized returns and risk using paired 10-session block bootstraps.
+
+![Inspected 2026 Alpaca comparison of return, exposure, maximum drawdown, and turnover](docs/historical-comparison.png)
+
+![Paired uncertainty and strategy exposure by prior-close regime](docs/uncertainty-and-exposure.png)
+
+From January through November 2026, the V3 ensemble returned **1.83% annualized**, compared with **1.82% V2 ML**, **1.56% equal weight**, **0.92% rules**, **1.66% SPY buy-and-hold**, and **1.47% exposure-matched SPY**. The paired arithmetic advantage over equal weight was **+0.15 percentage points**, with a 95% interval of **−7.99 to +8.02 points**. Equal weighting led in the 2023 and 2024 walk-forward runs. The retrospective stock universe, revised price adjustments, and inspected 2026 period limit generalization. Simulated fills do not model auction queue priority or delisting proceeds.
+
+## Reproduce the research
+
+The local archive contains the exact market-data inputs and reports. A fresh clone can run the synthetic demo immediately. Historical results require a separately obtained data snapshot. Alpaca provider access and revised adjustments can change reconstructed results.
 
 ```powershell
-python bot.py run --synthetic --mode dry-run
-python bot.py backtest --synthetic
-python -m unittest discover -s tests -v
+& $py -m trading.quant study --data audit-runs/v3/alpaca.csv
+& $py -m trading.quant compare --data audit-runs/v3/alpaca.csv
 ```
 
-Synthetic runs test application behavior and **do not establish a trading edge**.
+See the [quantitative research report](QUANT_RESEARCH_REPORT.md) for full commands, provenance, sensitivity analysis and limitations. The [portfolio audit](PORTFOLIO_AUDIT.md) records verification, and the [interview guide](INTERVIEW_PREP.md) summarizes the technical decisions.
 
-## Research with historical data
+## Alpaca and operational safety
 
-Provide a consistent-adjustment CSV with columns:
+Set paper credentials privately in the process environment. `bot.py verify-paper` reads status and positions. `bot.py download` reads history. Paper submission requires a local configuration opt-in and explicit arming. The independent risk gate checks cash, exposure, concentration where configured, losses, drawdown and quote freshness. A persistent SQLite journal blocks duplicate submissions and preserves unresolved intents after timeouts. The optional research assistant receives research metrics and regime context, without local journal, account, position or order fields. See [architecture notes](ARCHITECTURE.md).
 
-```text
-symbol,date,open,high,low,close,volume
-```
+## V4 financial intelligence and research
 
-Include the configured benchmark and a point-in-time universe when evaluating historical claims.
+V4 adds an opt-in financial intelligence layer. The V3 trading, backtesting and paper-risk flows continue to work without LLM keys. The dashboard **Financial intelligence** button reads local events, study outputs and estimated API costs without contacting a provider or broker. LLM output is not connected to order decisions.
 
 ```powershell
-python bot.py train --config config.local.json --data bars.csv
-python bot.py backtest --config config.local.json --data bars.csv
+$py = ".\.venv\Scripts\python.exe"
+New-Item -ItemType Directory -Force llm-runs | Out-Null
+& $py -m trading.llm_research study --synthetic --output llm-runs/fixture-study.json
+& $py bot.py dashboard --synthetic --mode offline --llm-study-report llm-runs/fixture-study.json
 ```
 
-For broker-assisted historical download, configure your symbol universe and **paper** credentials locally, then use:
+For SEC collection, use your own descriptive SEC User-Agent contact. For appropriately licensed news, issuer earnings announcements and other disclosures, create equivalent JSON Lines source records. Each row needs `symbol`, `kind` (`news`, `earnings`, `disclosure` or `sec_filing`), canonical HTTPS `url`, timezone-aware `published_at` and `observed_at`, `rights`, and permitted excerpt `text`. Keep source files under `llm-runs/`.
 
 ```powershell
-python bot.py download --config config.local.json --output bars.csv
+& $py -m trading.llm_research sec --symbol AAPL --cik 320193 --contact $env:SEC_CONTACT --output llm-runs/sec-sources.jsonl
+& $py -m trading.llm_research extract --sources llm-runs/sec-sources.jsonl --output llm-runs/events.jsonl --settings llm.example.json --ledger llm-runs/usage.sqlite3 --allow-provider-processing
+& $py bot.py dashboard --synthetic --mode offline --events llm-runs/events.jsonl --llm-ledger llm-runs/usage.sqlite3
 ```
 
-The final quarter of data is held out; earlier data is used for chronological walk-forward development. Training/validation label boundaries are respected by the research pipeline. Results depend on data quality and assumptions.
+Use `OPENAI_API_KEY` with the example configuration. For Anthropic, copy the example to `llm.local.json`, set provider to `anthropic`, model to `claude-haiku-5-5`, and set `ANTHROPIC_API_KEY` privately. Supply custom input and output token rates when choosing a model without a built-in rate. Send excerpts only when your access permits external processing. Missing credentials, expired events, malformed responses and rate limits do not affect quantitative execution.
 
-## Optional paper trading — read before use
+A real study requires immutable event archives with their true timestamps and a locked future start. Use `python -m trading.llm_research study --data path/to/bars.csv --events path/to/events.jsonl --config config.v3.example.json --start YYYY-MM-DD`. V4 rejects the already-inspected V3 period and refuses to substitute synthetic results. See [the LLM research report](LLM_RESEARCH_REPORT.md) for analysis, cost estimates, and the reason a genuine LLM performance result is currently unavailable.
 
-The app defaults to non-executing operation. Paper orders require configuration permission **and explicit per-cycle arming**:
+## Release candidate
 
-```powershell
-python bot.py run --config config.local.json --data bars.csv --mode paper --arm-paper
-```
+See [the changelog](CHANGELOG.md) and [release verification](RELEASE_READINESS.md). The optional chart environment uses Matplotlib 3.10.6. The default offline workflows and CI require no market or LLM credentials.
 
-Use a dedicated Alpaca **paper** account. Review configuration, recent data, open orders, and risk limits independently before arming. Paper order intents are journaled to reduce duplicate submissions following timeout/restart. Unresolved intents block execution until reconciled. Partial fills and cancellations require operator attention; cancellation is not automated.
+## Research branch
 
-Credentials belong in environment variables, never committed to Git:
-
-```text
-ALPACA_API_KEY
-ALPACA_API_SECRET
-OPENAI_API_KEY  # optional
-```
-
-## Evaluation caveats
-
-A convincing quant-research result requires **real adjusted historical data**, point-in-time universe construction, delisting treatment, transaction-cost sensitivity, and genuinely untouched out-of-sample evaluation. The historical simulator does not model capacity, queue priority, partial fills, or delistings. End-of-backtest positions are marked, not forced closed.
-
-Read [ARCHITECTURE.md](ARCHITECTURE.md) for strategy definitions, ML target construction, execution mechanics, and additional limitations.
-
-## Portfolio demo checklist
-
-For an external portfolio, add a reproducible **real-data research report** with exact date ranges, universe selection, benchmark, fees/slippage assumptions, train/test split, Sharpe and drawdown, failure cases, and limitations. Until then, describe this as an **engineering and research prototype**, not an alpha discovery.
-
-**Not investment advice. Not for live trading.**
+The portfolio release is frozen at the local **v4.0.0-rc.1** tag. This branch adds [individual strategy analysis](STRATEGY_ANALYSIS.md), [allocation comparisons](ALLOCATION_RESEARCH.md), and a [sector-universe robustness study](UNIVERSE_ROBUSTNESS.md). Model settings and order execution are preserved. The [prospective evaluation](PROSPECTIVE_EVALUATION.md) is manual and non-executing. See the [future LLM evaluation plan](LLM_EVALUATION_PLAN.md) for a low-cost prospective data protocol.

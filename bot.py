@@ -1,4 +1,4 @@
-"""Trading Bot V2 entry point. Running without arguments opens the demo dashboard."""
+"""Trading Bot V4 entry point. Running without arguments opens the demo dashboard."""
 import sys
 from trading.dashboard import main
 

@@ -1,0 +1,8 @@
+{
+  "provider": "openai",
+  "model": "gpt-6-luna",
+  "budget_usd": 0.25,
+  "requests_per_minute": 10,
+  "retries": 1,
+  "max_output_tokens": 384
+}

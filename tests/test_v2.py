@@ -73,7 +73,7 @@ class FakeBroker:
                 SimpleNamespace(timestamp=self.now, is_open=True))
 
     def quote(self, symbol):
-        return 100, self.now
+        return 100, 100, self.now
 
     def latest_complete_session(self, timestamp):
         return "2025-01-02"
@@ -122,6 +122,7 @@ class RiskAndExecutionTests(unittest.TestCase):
             self.assertIn("Pending", engine.paper("SPY", .1, .01, "2025-01-02", armed=True))
             self.assertEqual(engine.reconcile()[0][7], 2)
             fake.order.status = "filled"
+            fake.order.filled_qty = 10
             self.assertIn("already processed", engine.paper("SPY", .1, .01, "2025-01-02", armed=True))
             self.assertEqual(fake.calls, 1)
 

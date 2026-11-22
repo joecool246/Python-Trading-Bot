@@ -13,10 +13,11 @@ class Limits:
     max_orders: int = 8
     max_age_hours: float = 30
     kill: bool = False
+    max_spread: float = .02
 
     def __post_init__(self) -> None:
         if any(not 0 < value <= 1 for value in (self.position, self.exposure,
-               self.sector, self.daily_loss, self.drawdown, self.trade_risk)):
+               self.sector, self.daily_loss, self.drawdown, self.trade_risk, self.max_spread)):
             raise ValueError("Risk fractions must be between zero and one")
         if self.max_orders < 1 or not isfinite(self.max_age_hours) or self.max_age_hours <= 0:
             raise ValueError("Invalid order frequency or data age limit")
@@ -37,7 +38,9 @@ def approve(limits: Limits, account: Account, held: int, requested: int, price: 
     inputs = (account.equity, account.cash, account.exposure, account.peak,
               account.session_start, account.buying_power, price, atr, age_hours)
     if (limits.kill or not healthy or not all(map(isfinite, inputs))
-            or account.equity <= 0 or price <= 0 or held < 0):
+            or account.equity <= 0 or account.peak <= 0 or account.session_start <= 0
+            or account.exposure < 0 or price <= 0 or atr < 0 or held < 0
+            or (sector_value is not None and (not isfinite(sector_value) or sector_value < 0))):
         return 0, "kill switch or invalid account/data"
     if pending or not market_open or not 0 <= age_hours <= limits.max_age_hours or orders >= limits.max_orders:
         return 0, "open order, outside session, stale data or frequency limit"
