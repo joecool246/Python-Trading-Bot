@@ -1,58 +1,56 @@
-# Python Trading Bot (in the works currently updating to fit more strategies and efficient LLM APIs; inspired by QuantGuild)
+# Trading Bot V2
 
-A Tkinter-based paper-trading dashboard that uses the Alpaca API for market data and the OpenAI API for portfolio-analysis chat.
+A daily, long-only equities research and Alpaca paper-trading application. The default dashboard uses deterministic synthetic data and dry-run execution. Orders require both configuration and operator arming. The OpenAI assistant summarizes displayed research and has no execution tools.
 
-> **Educational use only.** This project does not provide financial advice. Review all trading behavior carefully and use Alpaca paper trading before considering any real funds.
+## Setup
 
-## Features
-
-- Tkinter desktop interface
-- Alpaca paper-trading account integration
-- Portfolio and open-order summaries
-- Latest-trade price lookup
-- OpenAI-powered portfolio chat analysis
-- Local equity configuration stored in `equities.json`
-- Environment-variable-based credential handling
-
-## Requirements
-
-- Python 3.13 or another supported Python 3 release
-- Alpaca paper-trading API credentials
-- An OpenAI API key
-
-## Installation
+Run these commands in the repository. Python 3.12 was used for verification. Tkinter comes with a standard Windows Python installation.
 
 ```powershell
-python -m pip install alpaca-trade-api openai
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+python -m pip install -r requirements.txt
+Copy-Item config.example.json config.local.json
 ```
 
-## Configuration
-
-Set credentials in the PowerShell session before starting the application:
+Use PowerShell environment variables for credentials. The example env file lists their names. The application reads the process environment directly. Alpaca credentials are used for paper account reads and historical downloads. OpenAI credentials are optional.
 
 ```powershell
-$env:ALPACA_API_KEY="your-alpaca-key"
-$env:ALPACA_API_SECRET="your-alpaca-secret"
-$env:OPENAI_API_KEY="your-openai-key"
+$env:ALPACA_API_KEY = "<paper-key>"
+$env:ALPACA_API_SECRET = "<paper-secret>"
+$env:OPENAI_API_KEY = "<optional-key>"
 ```
-
-Environment variables apply only to the current terminal session.
 
 ## Run
 
 ```powershell
 python bot.py
+python bot.py dashboard --synthetic --mode offline
+python bot.py run --synthetic --mode dry-run
+python bot.py backtest --synthetic
+python -m unittest discover -s tests -v
 ```
 
-The application uses `https://paper-api.alpaca.markets/` and is intended for paper trading.
+Supply historical data as CSV with `symbol,date,open,high,low,close,volume` and an entry for the configured benchmark. Use one row per symbol per daily session, UTC-compatible dates and a consistent adjustment methodology. Use a point-in-time universe for meaningful evaluation. A missing current symbol bar skips decisions and fills. Historical positions can retain their last price across gaps, so data containing delistings requires external cleanup and a documented terminal-value convention.
 
-## Security
+```powershell
+python bot.py download --config config.local.json --output bars.csv
+python bot.py train --config config.local.json --data bars.csv
+python bot.py backtest --config config.local.json --data bars.csv
+python bot.py dashboard --config config.local.json --data bars.csv --mode dry-run
+```
 
-Never commit API keys or `.env` files. Revoke any credential that has been exposed or shared in source code, chat, screenshots, or logs.
+Set `symbols` in the local JSON configuration before downloading a multi-stock universe. Downloads use adjusted daily IEX bars. Research fitting is in memory and repeats when a CLI run begins. The final quarter is held out, and walk-forward cross-validation uses the first three quarters.
 
-## Files
+## Paper orders
 
-- `bot.py` — Tkinter application and Alpaca/OpenAI integrations
-- `alpaca.ipynb` — Alpaca API examples
-- `openai.ipynb` — OpenAI portfolio-analysis example
-- `equities.json` — local saved trading configuration (excluded from Git)
+Use a dedicated Alpaca paper account. Update `allow_paper_orders` to `true` in the local configuration only after independent review. Refresh the historical CSV before starting a session. Launch the dashboard and choose **Run one paper cycle** to arm that cycle, or use an explicitly armed CLI run.
+
+```powershell
+python bot.py dashboard --config config.local.json --data bars.csv --mode paper
+python bot.py run --config config.local.json --data bars.csv --mode paper --arm-paper
+```
+
+Paper execution requires an open market, an exact previous-session signal date, an eligible equity, a fresh quote and an independent risk approval. It persists each order intent before submission, so restart or timeout cannot silently resubmit it. An unresolved intent pauses paper execution until reconciliation succeeds. Keep the same journal for a given account and use one dedicated bot account. A limit price bounds cash use on buys. Orders may stay open or fill partially. Cancellation is available in the broker adapter and is not automated. Review open orders in Alpaca before handling a stopped session. Dry-run proposals are logged separately and use a fixed illustrative cash balance, without maintaining an evolving simulated portfolio.
+
+See [architecture and strategy notes](ARCHITECTURE.md) for model design, simulation assumptions and evaluation limits.

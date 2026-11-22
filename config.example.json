@@ -1,0 +1,13 @@
+{
+  "benchmark": "SPY",
+  "initial_cash": 100000,
+  "fee_bps": 1,
+  "slippage_bps": 5,
+  "strategy_count": 2,
+  "min_edge": 0.001,
+  "allow_paper_orders": false,
+  "strategies": ["momentum", "reversion", "trend", "breakout", "pairs", "volatility"],
+  "parameters": {},
+  "sectors": {},
+  "risk": {"position": 0.15, "exposure": 0.65, "daily_loss": 0.025, "kill": false}
+}

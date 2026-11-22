@@ -5,3 +5,7 @@ __pycache__/
 *.py[cod]
 .ipynb_checkpoints/
 .vscode/
+!.env.example
+.venv/
+config.local.json
+orders.sqlite3*
