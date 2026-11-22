@@ -1,4 +1,4 @@
-# Python Trading Bot
+# Python Trading Bot (in the works currently updating to fit more strategies and efficient LLM APIs; inspired by QuantGuild)
 
 A Tkinter-based paper-trading dashboard that uses the Alpaca API for market data and the OpenAI API for portfolio-analysis chat.
 
