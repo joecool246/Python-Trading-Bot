@@ -1,4 +1,4 @@
-# Trading Bot V2
+# Trading Bot V2 (in progress/dev)
 
 A daily, long-only equities research and Alpaca paper-trading application. The default dashboard uses deterministic synthetic data and dry-run execution. Orders require both configuration and operator arming. The OpenAI assistant summarizes displayed research and has no execution tools.
 
